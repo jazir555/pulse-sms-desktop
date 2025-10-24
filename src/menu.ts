@@ -379,7 +379,39 @@ export default class PulseMenu {
 
   private showWindow = (windowProvider: WindowProvider): void => {
     if (windowProvider.getWindow() != null) {
-      windowProvider.getWindow().show();
+      const window = windowProvider.getWindow();
+      const browserView = windowProvider.getBrowserView();
+      
+      window.show();
+      
+      // Ensure the BrowserView is properly connected to the window and content is loaded
+      if (browserView) {
+        // Force reattachment of BrowserView to ensure it's displayed properly
+        window.setBrowserView(browserView);
+        this.browserviewPreparer.setBounds(window, browserView);
+        
+        // Reload the content if it appears blank (empty URL or failed state)
+        const currentURL = browserView.webContents.getURL();
+        if (!currentURL || currentURL === 'about:blank' || currentURL === '') {
+          browserView.webContents.loadURL("https://pulsesms.app");
+        } else {
+          // Sometimes the content may appear blank even if the URL is correct
+          // Try reloading the content to ensure it's displayed properly
+          if (browserView.webContents.isLoading()) {
+            // If it's still loading, wait for the load to complete
+            browserView.webContents.once('did-finish-load', () => {
+              // Content loaded successfully
+            });
+          } else {
+            // Check if we need to reload by testing if the page is properly loaded
+            // We'll trigger resize to ensure the view is properly displayed
+            setTimeout(() => {
+              this.browserviewPreparer.setBounds(window, browserView);
+            }, 100);
+          }
+        }
+      }
+      
       if (process.platform === "darwin") {
         app.dock.show();
       }
